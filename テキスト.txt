@@ -1,0 +1,288 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Windows Lucky Casino</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#080d18;color:#e8f0ff;
+ font-family:Arial,"Meiryo",sans-serif;
+}
+header{
+ background:#101c32;padding:16px;
+ border-bottom:2px solid #3479c9;
+ display:flex;justify-content:space-between;
+ align-items:center;flex-wrap:wrap;
+}
+h1{font-size:21px;margin:0;color:#69b8ff}
+main{max-width:850px;margin:25px auto;padding:15px}
+.panel{
+ background:#111e33;border:1px solid #31537c;
+ border-radius:9px;padding:18px;margin-bottom:15px;
+ box-shadow:0 5px 18px #0008;
+}
+.wallet{
+ height:22px;background:#26364b;
+ border-radius:20px;overflow:hidden;margin:10px 0;
+}
+.wallet div{
+ height:100%;width:100%;background:#31d69a;
+ transition:width .3s;
+}
+.money{font-size:27px;color:#65e6ae;font-weight:bold}
+.reels{
+ display:flex;gap:10px;justify-content:center;
+ margin:20px 0;
+}
+.reel{
+ flex:1;max-width:180px;height:130px;
+ background:#f1f3f8;color:#14243c;
+ border:5px solid #7289a7;border-radius:12px;
+ display:flex;align-items:center;justify-content:center;
+ font-size:32px;font-weight:bold;
+ box-shadow:inset 0 0 15px #777;
+}
+.buttons{
+ display:flex;gap:10px;justify-content:center;
+ flex-wrap:wrap;
+}
+button{
+ border:0;border-radius:6px;padding:13px 20px;
+ background:#1673cf;color:white;
+ font-weight:bold;font-size:15px;
+ cursor:pointer;
+}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:hover:not(:disabled){filter:brightness(1.2)}
+.stop{background:#b94a52}
+.lever{background:#b17b27;font-size:19px}
+input{
+ background:#081426;color:white;border:1px solid #4974a1;
+ padding:10px;border-radius:5px;width:130px;
+ font-size:17px;
+}
+.status{
+ min-height:48px;padding:13px;
+ background:#071426;border:1px solid #34516f;
+ border-radius:5px;color:#a9d7ff;
+}
+.log{
+ height:130px;overflow:auto;background:#050c16;
+ padding:10px;font-size:13px;color:#8eb9df;
+}
+table{width:100%;border-collapse:collapse}
+td,th{padding:9px;border-bottom:1px solid #344761;text-align:left}
+.small{font-size:12px;color:#91a8c4}
+</style>
+</head>
+<body>
+
+<header>
+<h1>◈ WINDOWS LUCKY CASINO</h1>
+<span>SIMULATION SYSTEM v1.0</span>
+</header>
+
+<main>
+
+<div class="panel">
+<h3>WALLET SYSTEM / 財布</h3>
+<div class="money" id="money">$100</div>
+<div class="wallet"><div id="gauge"></div></div>
+<div class="small">架空通貨 / REAL MONEY : NOT SUPPORTED</div>
+</div>
+
+<div class="panel">
+<h3>BET CONTROL / 賭け金設定</h3>
+<input type="number" id="bet" min="1" value="1">
+<button onclick="setAll()">全額BET</button>
+<button onclick="setOne()">1＄</button>
+<p class="small">賭け金は1＄～所持金の範囲で設定できます。</p>
+</div>
+
+<div class="panel">
+<h3>REEL MACHINE / スロット</h3>
+
+<div class="reels">
+<div class="reel" id="r0">🌸</div>
+<div class="reel" id="r1">🌺</div>
+<div class="reel" id="r2">🌷</div>
+</div>
+
+<div class="buttons">
+<button class="lever" id="start" onclick="startGame()">▼ レバーを下げる</button>
+</div>
+
+<p style="text-align:center">停止操作</p>
+<div class="buttons">
+<button class="stop" id="s0" onclick="stopReel(0)" disabled>1 LEFT</button>
+<button class="stop" id="s1" onclick="stopReel(1)" disabled>2 CENTER</button>
+<button class="stop" id="s2" onclick="stopReel(2)" disabled>3 RIGHT</button>
+</div>
+
+<div class="status" id="status">SYSTEM READY. BETを設定してレバーを下げてください。</div>
+</div>
+
+<div class="panel">
+<h3>PAY TABLE / 配当表</h3>
+<table>
+<tr><th>絵柄</th><th>倍率</th></tr>
+<tr><td>777</td><td>×100</td></tr>
+<tr><td>🌺 百合</td><td>×20</td></tr>
+<tr><td>🌸 桜</td><td>×50</td></tr>
+<tr><td>🌷 椿</td><td>×2</td></tr>
+<tr><td>🪷 ハスの花</td><td>×150</td></tr>
+<tr><td>🌼 桃の花</td><td>×40</td></tr>
+</table>
+<p class="small">3つの絵柄が一致すると配当獲得。</p>
+</div>
+
+<div class="panel">
+<h3>SYSTEM LOG</h3>
+<div class="log" id="log">[SYSTEM] Windows Lucky Casino initialized.<br>
+[SYSTEM] Virtual wallet connected.<br>
+[SYSTEM] Ready.</div>
+</div>
+
+</main>
+
+<script>
+const symbols=[
+ {name:"777",icon:"777",rate:100},
+ {name:"百合",icon:"🌺",rate:20},
+ {name:"桜",icon:"🌸",rate:50},
+ {name:"椿",icon:"🌷",rate:2},
+ {name:"ハス",icon:"🪷",rate:150},
+ {name:"桃の花",icon:"🌼",rate:40}
+];
+
+let money=100;
+let bet=1;
+let spinning=false;
+let stopped=[true,true,true];
+let results=[null,null,null];
+let timers=[];
+
+const $=id=>document.getElementById(id);
+
+function log(msg){
+ $("log").innerHTML+=`<br>[${new Date().toLocaleTimeString()}] ${msg}`;
+ $("log").scrollTop=$("log").scrollHeight;
+}
+
+function update(){
+ $("money").textContent="$"+money.toLocaleString();
+ $("gauge").style.width=Math.min(100,money/1000*100)+"%";
+ $("gauge").style.background=money<20?"#e75b5b":"#31d69a";
+ $("bet").max=money;
+}
+
+function setAll(){
+ $("bet").value=money;
+}
+function setOne(){
+ $("bet").value=1;
+}
+
+function startGame(){
+ if(spinning)return;
+
+ bet=Math.floor(Number($("bet").value));
+
+ if(!Number.isFinite(bet)||bet<1||bet>money){
+  $("status").textContent="ERROR 400: INVALID BET";
+  return;
+ }
+
+ money-=bet;
+ update();
+
+ spinning=true;
+ stopped=[false,false,false];
+ results=[null,null,null];
+
+ $("start").disabled=true;
+
+ for(let i=0;i<3;i++){
+  $("s"+i).disabled=false;
+  spinVisual(i);
+ }
+ $("status").textContent="REELS RUNNING... STOP EACH REEL WITH 1 / 2 / 3";
+ log("BET ACCEPTED: $"+bet);
+}
+
+function spinVisual(i){
+ const el=$("r"+i);
+ timers[i]=setInterval(()=>{
+  const s=symbols[Math.floor(Math.random()*symbols.length)];
+  el.textContent=s.icon;
+ },80);
+}
+
+function randomSymbol(){
+ const highBet=bet>=50;
+
+ // ハスは通常1%、50＄以上で70%
+ const lotusChance=highBet?0.70:0.01;
+
+ if(Math.random()<lotusChance){
+  return symbols[4];
+ }
+
+ // 残りの絵柄から抽選
+ const others=[0,1,2,3,5];
+ return symbols[others[Math.floor(Math.random()*others.length)]];
+}
+
+function stopReel(i){
+ if(!spinning||stopped[i])return;
+
+ clearInterval(timers[i]);
+
+ results[i]=randomSymbol();
+ stopped[i]=true;
+
+ $("r"+i).textContent=results[i].icon;
+ $("s"+i).disabled=true;
+
+ log("REEL "+(i+1)+" STOPPED.");
+
+ if(stopped.every(Boolean)){
+  finishGame();
+ }
+}
+
+function finishGame(){
+ spinning=false;
+ $("start").disabled=false;
+
+ const same=results.every(x=>x.name===results[0].name);
+
+ if(same){
+  const prize=bet*results[0].rate;
+  money+=prize;
+
+  $("status").textContent=
+   "JACKPOT!! "+results[0].name+" ×"+results[0].rate+
+   " / PRIZE $"+prize.toLocaleString();
+
+  log("WIN: $"+prize);
+ }else{
+  $("status").textContent="NO WIN. BET LOST.";
+  log("GAME OVER.");
+ }
+
+ update();
+
+ if(money<=0){
+  $("status").textContent+=" / WALLET EMPTY.";
+  log("ERROR 404: WALLET EMPTY.");
+ }
+}
+
+update();
+</script>
+</body>
+</html>
